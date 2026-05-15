@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPS COMMAND — Facility & Personnel Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --bg2: #0d1318;
+    --bg3: #111820;
+    --panel: #0a1520;
+    --border: #1a3050;
+    --border2: #0e2438;
+    --accent: #00c8ff;
+    --accent2: #00ff9d;
+    --warn: #ffb800;
+    --danger: #ff3a3a;
+    --text: #c8dde8;
+    --text2: #6a8fa8;
+    --text3: #3a5a72;
+    --glow: 0 0 12px rgba(0,200,255,0.4);
+    --glow2: 0 0 12px rgba(0,255,157,0.4);
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui: 'Exo 2', sans-serif;
+    --font-label: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    background: linear-gradient(90deg, #050a0f 0%, var(--panel) 50%, #050a0f 100%);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--font-label);
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .logo-icon { font-size: 1.2rem; }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  .clock {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
+  .sys-status {
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: var(--accent2);
+    text-shadow: var(--glow2);
+  }
+  .pulse {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent2);
+    border-radius: 50%;
+    margin-right: 6px;
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* ── NAV TABS ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+  }
+  .tab-btn {
+    font-family: var(--font-label);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    padding: 0.75rem 1.8rem;
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+    box-shadow: var(--glow);
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active::after { transform: scaleX(1); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  /* ── MAIN CONTAINER ── */
+  .main { padding: 1.5rem 2rem; }
+  .tab-view { display: none; }
+  .tab-view.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+
+  /* ── SECTION HEADERS ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .section-title {
+    font-family: var(--font-label);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px; height: 1em;
+    background: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  /* ── STAT CARDS ── */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 1rem 1.2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .stat-card.warn::before { background: linear-gradient(90deg, transparent, var(--warn), transparent); }
+  .stat-card.danger::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+  .stat-card.ok::before { background: linear-gradient(90deg, transparent, var(--accent2), transparent); }
+  .stat-label {
+    font-family: var(--font-label);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--text2);
+    margin-bottom: 0.4rem;
+  }
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 1.8rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-card.warn .stat-value { color: var(--warn); }
+  .stat-card.danger .stat-value { color: var(--danger); }
+  .stat-card.ok .stat-value { color: var(--accent2); }
+  .stat-sub {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text3);
+    margin-top: 0.3rem;
+  }
+
+  /* ── BUILDING TABS ── */
+  .bldg-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .bldg-tab {
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 0.4rem 1.2rem;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bldg-tab.active {
+    background: var(--panel);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 8px rgba(0,200,255,0.2);
+  }
+
+  /* ── GADGET GRID ── */
+  .gadget-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+  }
+  .gadget-card {
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    padding: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    position: relative;
+  }
+  .gadget-card:hover {
+    border-color: var(--border);
+    box-shadow: 0 0 12px rgba(0,200,255,0.1);
+  }
+  .gadget-card.working { border-left: 3px solid var(--accent2); }
+  .gadget-card.fault { border-left: 3px solid var(--danger); }
+  .gadget-card.maint { border-left: 3px solid var(--warn); }
+  .gadget-id {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text3);
+    margin-bottom: 0.3rem;
+  }
+  .gadget-name {
+    font-family: var(--font-label);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+    line-height: 1.2;
+  }
+  .gadget-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+  }
+  .gadget-status.ok { background: rgba(0,255,157,0.1); color: var(--accent2); }
+  .gadget-status.fault { background: rgba(255,58,58,0.12); color: var(--danger); }
+  .gadget-status.maint { background: rgba(255,184,0,0.1); color: var(--warn); }
+  .gadget-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .ok .gadget-dot { background: var(--accent2); box-shadow: 0 0 4px var(--accent2); animation: pulse 1.5s infinite; }
+  .fault .gadget-dot { background: var(--danger); box-shadow: 0 0 4px var(--danger); animation: pulse 0.8s infinite; }
+  .maint .gadget-dot { background: var(--warn); }
+  .gadget-meta {
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text3);
+    line-height: 1.5;
+  }
+  .gadget-meta span { color: var(--text2); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,10,15,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 40px rgba(0,200,255,0.2);
+    width: min(600px, 90vw);
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from{transform:scale(0.96);opacity:0;} to{transform:scale(1);opacity:1;} }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title {
+    font-family: var(--font-label);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .modal-close {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    width: 28px; height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { border-color: var(--danger); color: var(--danger); }
+  .modal-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+  }
+  .modal-field {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    padding: 0.6rem 0.8rem;
+  }
+  .modal-field-label {
+    font-family: var(--font-label);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    margin-bottom: 0.2rem;
+  }
+  .modal-field-value {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+  .modal-field-value.accent { color: var(--accent); }
+  .modal-field-value.danger { color: var(--danger); }
+  .modal-field-value.warn { color: var(--warn); }
+  .modal-field-value.ok { color: var(--accent2); }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    overflow: auto;
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .data-table th {
+    background: var(--bg3);
+    color: var(--accent);
+    font-family: var(--font-label);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 0.65rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  .data-table th:hover { color: var(--accent2); }
+  .data-table td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid var(--border2);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .data-table tr:hover td { background: rgba(0,200,255,0.03); }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-block;
+    font-family: var(--font-label);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 2px;
+  }
+  .badge-ok { background: rgba(0,255,157,0.12); color: var(--accent2); }
+  .badge-warn { background: rgba(255,184,0,0.12); color: var(--warn); }
+  .badge-danger { background: rgba(255,58,58,0.12); color: var(--danger); }
+  .badge-info { background: rgba(0,200,255,0.12); color: var(--accent); }
+
+  /* ── SEARCH / FILTERS ── */
+  .controls-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 0.5rem 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+    flex: 1;
+    min-width: 220px;
+  }
+  .search-box:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,200,255,0.15); }
+  .search-box::placeholder { color: var(--text3); }
+  select.filter-select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .result-count {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* ── BMI INDICATOR ── */
+  .bmi-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .bmi-track {
+    width: 60px; height: 4px;
+    background: var(--bg3);
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bmi-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    border-radius: 2px;
+  }
+  .bmi-val {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  /* ── DUMMY CHECK ── */
+  .check-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .check-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+  }
+  .check-dot.pass { background: var(--accent2); box-shadow: 0 0 4px rgba(0,255,157,0.4); }
+  .check-dot.fail { background: var(--danger); }
+  .check-dot.skip { background: var(--text3); }
+
+  /* ── EXPERTISE TAGS ── */
+  .expertise-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .exp-tag {
+    background: rgba(0,200,255,0.08);
+    border: 1px solid rgba(0,200,255,0.2);
+    color: var(--accent);
+    font-family: var(--font-label);
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 2px;
+  }
+
+  /* ── PAGINATION ── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1rem;
+    justify-content: center;
+  }
+  .page-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .page-btn:hover, .page-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,200,255,0.08);
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* ── CORNER DECO ── */
+  .corner-deco {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.5;
+  }
+  .corner-deco.tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+  .corner-deco.tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+  .corner-deco.bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+  .corner-deco.br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+  .panel-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text3);
+    font-family: var(--font-label);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-icon">⬡</span>
+    OPS COMMAND
+  </div>
+  <div class="topbar-right">
+    <div class="sys-status"><span class="pulse"></span>SYSTEMS NOMINAL</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</div>
+
+<!-- NAVIGATION -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('gadgets', this)">◈ GADGET STATUS</button>
+  <button class="tab-btn" onclick="switchTab('personnel', this)">◈ PERSONNEL PERFORMANCE</button>
+</div>
+
+<div class="main">
+
+  <!-- ═══════════ TAB 1: GADGETS ═══════════ -->
+  <div class="tab-view active" id="tab-gadgets">
+
+    <div class="section-header">
+      <div class="section-title">FACILITY GADGET MONITORING — 3 BUILDINGS</div>
+      <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text3);">LAST SWEEP: <span id="last-sweep"></span></div>
+    </div>
+
+    <div class="stat-row" id="gadget-stats"></div>
+
+    <div class="bldg-tabs" id="bldg-tabs"></div>
+
+    <div class="gadget-grid" id="gadget-grid"></div>
+  </div>
+
+  <!-- ═══════════ TAB 2: PERSONNEL ═══════════ -->
+  <div class="tab-view" id="tab-personnel">
+
+    <div class="section-header">
+      <div class="section-title">PERSONNEL PERFORMANCE REGISTER — 735 PERSONNEL</div>
+      <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text3);">RECORD DATE: <span id="rec-date"></span></div>
+    </div>
+
+    <div class="stat-row" id="personnel-stats"></div>
+
+    <div class="controls-row">
+      <input class="search-box" type="text" id="p-search" placeholder="SEARCH by name, rank, ID..." oninput="filterPersonnel()">
+      <select class="filter-select" id="p-bmi" onchange="filterPersonnel()">
+        <option value="">ALL BMI CATEGORIES</option>
+        <option value="Underweight">UNDERWEIGHT</option>
+        <option value="Normal">NORMAL</option>
+        <option value="Overweight">OVERWEIGHT</option>
+        <option value="Obese">OBESE</option>
+      </select>
+      <select class="filter-select" id="p-check" onchange="filterPersonnel()">
+        <option value="">ALL DUMMY STATUS</option>
+        <option value="pass">ALL PASS</option>
+        <option value="fail">HAS FAIL</option>
+      </select>
+      <select class="filter-select" id="p-punish" onchange="filterPersonnel()">
+        <option value="">ALL PUNISHMENT</option>
+        <option value="0">CLEAN RECORD</option>
+        <option value="1">1+ PUNISHMENTS</option>
+        <option value="3">3+ PUNISHMENTS</option>
+      </select>
+      <div class="result-count" id="p-count"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th onclick="sortPersonnel('id')">ID ↕</th>
+            <th onclick="sortPersonnel('rank')">RANK ↕</th>
+            <th onclick="sortPersonnel('name')">NAME ↕</th>
+            <th onclick="sortPersonnel('bmi')">BMI ↕</th>
+            <th>BMI CAT</th>
+            <th>DUMMY CHECKS (L6)</th>
+            <th onclick="sortPersonnel('punish')">PUNISHMENTS ↕</th>
+            <th>LAST PUNISHMENT</th>
+            <th>EXPERTISE</th>
+            <th>LAST UPDATE</th>
+          </tr>
+        </thead>
+        <tbody id="personnel-tbody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- GADGET DETAIL MODAL -->
+<div class="modal-overlay" id="gadget-modal" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">GADGET DETAIL</div>
+      <button class="modal-close" onclick="closeGadgetModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA GENERATION
+// ══════════════════════════════════════════
+
+const BUILDINGS = ['BUILDING ALPHA', 'BUILDING BRAVO', 'BUILDING CHARLIE'];
+const BUILD_IDS = ['A', 'B', 'C'];
+
+const GADGET_TYPES = [
+  'HVAC UNIT','FIRE SUPPRESSOR','CCTV CAMERA','ACCESS CONTROL','UPS SYSTEM',
+  'NETWORK SWITCH','POWER METER','WATER PUMP','ELEVATOR CTRL','GENERATOR',
+  'AIR PURIFIER','TEMP SENSOR','MOTION SENSOR','INTERCOM UNIT','DOOR LOCK',
+  'LIGHTING CTRL','SERVER RACK','SOLAR INVERTER','FUEL MONITOR','PA SYSTEM',
+  'SPRINKLER CTRL','VOLTAGE REG','BACKUP BATTERY','COOLING TOWER','SMOKE DETECT'
+];
+
+const STATUSES = ['working','working','working','working','fault','fault','maint'];
+const CORRESPONDENCES = [
+  'WO#2024-0312 — Maintenance dept notified',
+  'WO#2024-0445 — Vendor contacted, awaiting parts',
+  'WO#2024-0521 — Internal repair team assigned',
+  'SR#2024-0187 — Escalated to Facilities Mgr',
+  'WO#2024-0608 — OEM support ticket raised',
+];
+const TECHNICIANS = ['SGT RAHMAN','CPL AZIZ','SFC OMAR','SSG HASSAN','MSG YUSUF'];
+
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function pickOne(arr) { return arr[rnd(0, arr.length - 1)]; }
+function rndDate(daysBack) {
+  const d = new Date();
+  d.setDate(d.getDate() - rnd(0, daysBack));
+  return d.toISOString().split('T')[0];
+}
+
+const gadgetData = {};
+BUILDINGS.forEach((bldg, bi) => {
+  gadgetData[bi] = Array.from({length: 25}, (_, gi) => {
+    const status = pickOne(STATUSES);
+    const downSince = status !== 'working' ? rndDate(60) : null;
+    const lastUpdate = rndDate(7);
+    return {
+      id: `${BUILD_IDS[bi]}-G${String(gi+1).padStart(2,'0')}`,
+      building: bldg,
+      name: GADGET_TYPES[gi],
+      status,
+      location: `Floor ${rnd(1,4)}, Zone ${String.fromCharCode(65+rnd(0,3))}`,
+      serial: `SN${rnd(100000,999999)}`,
+      installDate: rndDate(1500),
+      lastUpdate,
+      downSince,
+      correspondence: status !== 'working' ? pickOne(CORRESPONDENCES) : null,
+      assignedTech: status !== 'working' ? pickOne(TECHNICIANS) : null,
+      runtime: status === 'working' ? `${rnd(1,8760)}h` : '—',
+    };
+  });
+});
+
+// Personnel data
+const RANKS = ['PVT','PFC','SPC','CPL','SGT','SSG','SFC','MSG','WO1','CW2','2LT','1LT','CPT','MAJ'];
+const RANK_W = [80,70,60,50,40,30,20,10,8,6,5,4,3,2];
+const FIRST = ['Ahmad','Rizal','Faiz','Hakim','Amir','Zainul','Hafiz','Izzat','Syafiq','Nabil','Azrul','Firdaus','Hanif','Luqman','Saiful','Mukhriz','Arif','Danish','Zahid','Khairul','Imran','Rasyid','Zulkifli','Azwan','Farhan','Hasrul','Izwan','Jaffar','Kamal','Latif','Mahathir','Nazirul','Othman','Pauzi','Qhairul','Rashdan','Sazali','Tarmizi','Umar','Vino'];
+const LAST = ['bin Abdullah','bin Rahman','bin Hassan','bin Ismail','bin Omar','bin Ali','bin Yusuf','bin Ibrahim','bin Aziz','bin Hamid','bin Salleh','bin Zakaria','bin Osman','bin Nawawi','bin Basir'];
+const EXPERTISE_LIST = ['COMMS','EOD','MEDIC','SNIPER','INTL','CYBER','LOGISTIC','SIGINT','K9 HANDLER','NBC','INTEL','SF','RANGER','PIONEER','AIRBORNE','SIGOPS','EW','HUMINT'];
+
+function weightedRank() {
+  let total = RANK_W.reduce((a,b)=>a+b,0);
+  let r = rnd(0,total-1);
+  for(let i=0;i<RANKS.length;i++){r-=RANK_W[i];if(r<0)return RANKS[i];}
+  return RANKS[0];
+}
+
+function bmiCategory(bmi) {
+  if(bmi<18.5) return 'Underweight';
+  if(bmi<25) return 'Normal';
+  if(bmi<30) return 'Overweight';
+  return 'Obese';
+}
+
+const PUNISHMENT_TYPES = ['Late for duty','AWOL (brief)','Insubordination','Uniform violation','Equipment damage','Conduct unbecoming','Negligence'];
+
+const personnelData = Array.from({length: 735}, (_, i) => {
+  const bmi = +(15 + Math.random()*18).toFixed(1);
+  const checks = Array.from({length:6}, () => Math.random() > 0.12 ? 'pass' : 'fail');
+  const punish = rnd(0,5);
+  const expCount = rnd(0,4);
+  const expertise = [];
+  const expPool = [...EXPERTISE_LIST];
+  for(let j=0;j<expCount;j++){
+    const idx = rnd(0,expPool.length-1);
+    expertise.push(expPool.splice(idx,1)[0]);
+  }
+  return {
+    id: `P${String(i+1).padStart(4,'0')}`,
+    rank: weightedRank(),
+    name: `${pickOne(FIRST)} ${pickOne(LAST)}`,
+    bmi,
+    bmiCat: bmiCategory(bmi),
+    checks,
+    punish,
+    lastPunish: punish > 0 ? rndDate(180) : null,
+    lastPunishType: punish > 0 ? pickOne(PUNISHMENT_TYPES) : null,
+    expertise,
+    lastUpdate: rndDate(30),
+  };
+});
+
+// ══════════════════════════════════════════
+//  CLOCK
+// ══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toTimeString().slice(0,8);
+}
+setInterval(updateClock, 1000);
+updateClock();
+document.getElementById('last-sweep').textContent = new Date().toLocaleDateString('en-GB');
+document.getElementById('rec-date').textContent = new Date().toLocaleDateString('en-GB');
+
+// ══════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+//  GADGET DASHBOARD
+// ══════════════════════════════════════════
+let activeBldg = 0;
+
+function renderGadgetStats() {
+  const all = Object.values(gadgetData).flat();
+  const working = all.filter(g=>g.status==='working').length;
+  const fault = all.filter(g=>g.status==='fault').length;
+  const maint = all.filter(g=>g.status==='maint').length;
+  const uptime = ((working/all.length)*100).toFixed(1);
+  document.getElementById('gadget-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">TOTAL GADGETS</div><div class="stat-value">${all.length}</div><div class="stat-sub">ACROSS 3 BUILDINGS</div></div>
+    <div class="stat-card ok"><div class="stat-label">OPERATIONAL</div><div class="stat-value">${working}</div><div class="stat-sub">STATUS: NOMINAL</div></div>
+    <div class="stat-card danger"><div class="stat-label">FAULT / DOWN</div><div class="stat-value">${fault}</div><div class="stat-sub">REQUIRES ATTENTION</div></div>
+    <div class="stat-card warn"><div class="stat-label">MAINTENANCE</div><div class="stat-value">${maint}</div><div class="stat-sub">SCHEDULED WORK</div></div>
+    <div class="stat-card"><div class="stat-label">UPTIME RATE</div><div class="stat-value" style="color:${uptime>=80?'var(--accent2)':'var(--warn)'}">${uptime}%</div><div class="stat-sub">SYSTEM HEALTH</div></div>
+  `;
+}
+
+function renderBldgTabs() {
+  const cont = document.getElementById('bldg-tabs');
+  cont.innerHTML = BUILDINGS.map((b,i) => {
+    const g = gadgetData[i];
+    const faults = g.filter(x=>x.status!=='working').length;
+    return `<button class="bldg-tab ${i===activeBldg?'active':''}" onclick="switchBldg(${i}, this)">
+      ${b} <span style="font-family:var(--font-mono);font-size:0.7rem;margin-left:0.4rem;color:${faults>0?'var(--warn)':'var(--accent2)'};">[${faults} issues]</span>
+    </button>`;
+  }).join('');
+}
+
+function switchBldg(idx, btn) {
+  activeBldg = idx;
+  document.querySelectorAll('.bldg-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGadgetGrid();
+}
+
+function renderGadgetGrid() {
+  const gadgets = gadgetData[activeBldg];
+  document.getElementById('gadget-grid').innerHTML = gadgets.map(g => {
+    const sc = g.status === 'working' ? 'ok' : g.status === 'fault' ? 'fault' : 'maint';
+    const label = g.status === 'working' ? 'OPERATIONAL' : g.status === 'fault' ? 'FAULT' : 'MAINTENANCE';
+    return `<div class="gadget-card ${g.status}" onclick="openGadgetModal('${g.id}')">
+      <div class="gadget-id">${g.id} · ${g.serial}</div>
+      <div class="gadget-name">${g.name}</div>
+      <div class="gadget-status ${sc}"><span class="gadget-dot"></span>${label}</div>
+      <div class="gadget-meta">
+        LOC: <span>${g.location}</span><br>
+        UPDATE: <span>${g.lastUpdate}</span>
+        ${g.downSince ? `<br>DOWN SINCE: <span style="color:var(--danger)">${g.downSince}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Gadget Modal ──
+function openGadgetModal(gid) {
+  const g = Object.values(gadgetData).flat().find(x=>x.id===gid);
+  if(!g) return;
+  const sc = g.status==='working'?'ok':g.status==='fault'?'danger':'warn';
+  const label = g.status==='working'?'OPERATIONAL':g.status==='fault'?'FAULT / DOWN':'MAINTENANCE';
+  document.getElementById('modal-title').textContent = `${g.id} — ${g.name}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-field-label">STATUS</div><div class="modal-field-value ${sc}">${label}</div></div>
+      <div class="modal-field"><div class="modal-field-label">BUILDING</div><div class="modal-field-value">${g.building}</div></div>
+      <div class="modal-field"><div class="modal-field-label">LOCATION</div><div class="modal-field-value accent">${g.location}</div></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-field-label">SERIAL NO.</div><div class="modal-field-value">${g.serial}</div></div>
+      <div class="modal-field"><div class="modal-field-label">INSTALL DATE</div><div class="modal-field-value">${g.installDate}</div></div>
+      <div class="modal-field"><div class="modal-field-label">RUNTIME</div><div class="modal-field-value">${g.runtime}</div></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-field-label">LAST STATUS UPDATE</div><div class="modal-field-value">${g.lastUpdate}</div></div>
+      ${g.downSince ? `<div class="modal-field"><div class="modal-field-label">DOWN SINCE</div><div class="modal-field-value danger">${g.downSince}</div></div>
+      <div class="modal-field"><div class="modal-field-label">DAYS OFFLINE</div><div class="modal-field-value danger">${Math.ceil((new Date()-new Date(g.downSince))/(1000*60*60*24))} DAYS</div></div>` : '<div class="modal-field"><div class="modal-field-label">HEALTH</div><div class="modal-field-value ok">ALL SYSTEMS GO</div></div><div class="modal-field"></div>'}
+    </div>
+    ${g.correspondence ? `
+    <div class="modal-row">
+      <div class="modal-field" style="flex:1"><div class="modal-field-label">CORRESPONDENCE / WORK ORDER</div><div class="modal-field-value warn">${g.correspondence}</div></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-field-label">ASSIGNED TECHNICIAN</div><div class="modal-field-value accent">${g.assignedTech}</div></div>
+    </div>` : ''}
+  `;
+  document.getElementById('gadget-modal').classList.add('open');
+}
+
+function closeGadgetModal() {
+  document.getElementById('gadget-modal').classList.remove('open');
+}
+
+function closeModal(e) {
+  if(e.target === document.getElementById('gadget-modal')) closeGadgetModal();
+}
+
+// ══════════════════════════════════════════
+//  PERSONNEL DASHBOARD
+// ══════════════════════════════════════════
+let pFiltered = [...personnelData];
+let pSort = {col: 'id', dir: 1};
+let pPage = 1;
+const pPerPage = 25;
+
+function renderPersonnelStats() {
+  const normal = personnelData.filter(p=>p.bmiCat==='Normal').length;
+  const over = personnelData.filter(p=>p.bmiCat==='Overweight'||p.bmiCat==='Obese').length;
+  const under = personnelData.filter(p=>p.bmiCat==='Underweight').length;
+  const withPunish = personnelData.filter(p=>p.punish>0).length;
+  const totalPunish = personnelData.reduce((s,p)=>s+p.punish,0);
+  const qualified = personnelData.filter(p=>p.expertise.length>0).length;
+  document.getElementById('personnel-stats').innerHTML = `
+    <div class="stat-card ok"><div class="stat-label">NORMAL BMI</div><div class="stat-value">${normal}</div><div class="stat-sub">${((normal/735)*100).toFixed(0)}% OF STRENGTH</div></div>
+    <div class="stat-card warn"><div class="stat-label">OVERWEIGHT/OBESE</div><div class="stat-value">${over}</div><div class="stat-sub">REQUIRES ACTION</div></div>
+    <div class="stat-card"><div class="stat-label">UNDERWEIGHT</div><div class="stat-value">${under}</div><div class="stat-sub">MONITOR REQUIRED</div></div>
+    <div class="stat-card danger"><div class="stat-label">PUNISHMENTS</div><div class="stat-value">${totalPunish}</div><div class="stat-sub">${withPunish} PERSONNEL</div></div>
+    <div class="stat-card accent"><div class="stat-label">MULTI-QUALIFIED</div><div class="stat-value">${qualified}</div><div class="stat-sub">ADDITIONAL EXPERTISE</div></div>
+  `;
+}
+
+function getBMIColor(cat) {
+  if(cat==='Normal') return 'var(--accent2)';
+  if(cat==='Overweight') return 'var(--warn)';
+  if(cat==='Obese') return 'var(--danger)';
+  return 'var(--accent)';
+}
+
+function getBMIPct(bmi) {
+  return Math.min(100, ((bmi - 10) / 25) * 100);
+}
+
+function renderPersonnelTable() {
+  const tbody = document.getElementById('personnel-tbody');
+  const start = (pPage-1)*pPerPage;
+  const slice = pFiltered.slice(start, start+pPerPage);
+
+  if(slice.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">NO RECORDS MATCH CURRENT FILTERS</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = slice.map(p => {
+    const bmiColor = getBMIColor(p.bmiCat);
+    const bmiPct = getBMIPct(p.bmi);
+    const checkHtml = `<div class="check-dots">${p.checks.map(c=>`<div class="check-dot ${c}" title="${c.toUpperCase()}"></div>`).join('')}</div>`;
+    const expHtml = p.expertise.length > 0
+      ? `<div class="expertise-tags">${p.expertise.map(e=>`<span class="exp-tag">${e}</span>`).join('')}</div>`
+      : '<span style="color:var(--text3);font-size:0.65rem;">—</span>';
+    const punishBadge = p.punish === 0 ? '<span class="badge badge-ok">CLEAN</span>'
+      : p.punish >= 3 ? `<span class="badge badge-danger">${p.punish}×</span>`
+      : `<span class="badge badge-warn">${p.punish}×</span>`;
+    const catBadge = p.bmiCat === 'Normal' ? `<span class="badge badge-ok">${p.bmiCat}</span>`
+      : p.bmiCat === 'Overweight' ? `<span class="badge badge-warn">${p.bmiCat}</span>`
+      : p.bmiCat === 'Obese' ? `<span class="badge badge-danger">${p.bmiCat}</span>`
+      : `<span class="badge badge-info">${p.bmiCat}</span>`;
+
+    return `<tr>
+      <td style="color:var(--text3)">${p.id}</td>
+      <td><span class="badge badge-info">${p.rank}</span></td>
+      <td style="color:var(--text)">${p.name}</td>
+      <td>
+        <div class="bmi-bar">
+          <div class="bmi-track"><div class="bmi-fill" style="width:${bmiPct}%;background:${bmiColor}"></div></div>
+          <span class="bmi-val" style="color:${bmiColor}">${p.bmi}</span>
+        </div>
+      </td>
+      <td>${catBadge}</td>
+      <td>${checkHtml}</td>
+      <td>${punishBadge}</td>
+      <td style="font-size:0.65rem;color:var(--text3)">${p.lastPunish ? `${p.lastPunish}<br><span style="color:var(--text2)">${p.lastPunishType}</span>` : '—'}</td>
+      <td>${expHtml}</td>
+      <td style="color:var(--text3)">${p.lastUpdate}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('p-count').textContent = `SHOWING ${start+1}–${Math.min(start+pPerPage, pFiltered.length)} OF ${pFiltered.length}`;
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(pFiltered.length / pPerPage);
+  const cont = document.getElementById('pagination');
+  if(total <= 1) { cont.innerHTML=''; return; }
+  let html = `<button class="page-btn" onclick="goPage(${Math.max(1,pPage-1)})">◀</button>`;
+  const range = [];
+  for(let i=1;i<=total;i++){
+    if(i===1||i===total||Math.abs(i-pPage)<=2) range.push(i);
+    else if(range[range.length-1]!=='...') range.push('...');
+  }
+  range.forEach(r => {
+    if(r==='...') html += `<span class="page-btn" style="cursor:default">…</span>`;
+    else html += `<button class="page-btn ${r===pPage?'active':''}" onclick="goPage(${r})">${r}</button>`;
+  });
+  html += `<button class="page-btn" onclick="goPage(${Math.min(total,pPage+1)})">▶</button>`;
+  cont.innerHTML = html;
+}
+
+function goPage(n) { pPage=n; renderPersonnelTable(); }
+
+function filterPersonnel() {
+  const q = document.getElementById('p-search').value.toLowerCase();
+  const bmiF = document.getElementById('p-bmi').value;
+  const checkF = document.getElementById('p-check').value;
+  const punishF = document.getElementById('p-punish').value;
+
+  pFiltered = personnelData.filter(p => {
+    const matchQ = !q || p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || p.rank.toLowerCase().includes(q);
+    const matchBmi = !bmiF || p.bmiCat === bmiF;
+    const matchCheck = !checkF || (checkF==='pass' ? p.checks.every(c=>c==='pass') : p.checks.some(c=>c==='fail'));
+    const matchPunish = !punishF || (punishF==='0' ? p.punish===0 : p.punish >= parseInt(punishF));
+    return matchQ && matchBmi && matchCheck && matchPunish;
+  });
+
+  applySortPersonnel();
+  pPage = 1;
+  renderPersonnelTable();
+}
+
+function sortPersonnel(col) {
+  if(pSort.col === col) pSort.dir *= -1;
+  else { pSort.col = col; pSort.dir = 1; }
+  applySortPersonnel();
+  pPage = 1;
+  renderPersonnelTable();
+}
+
+function applySortPersonnel() {
+  pFiltered.sort((a,b) => {
+    let av = a[pSort.col], bv = b[pSort.col];
+    if(pSort.col === 'punish') { av=a.punish; bv=b.punish; }
+    if(typeof av === 'number') return (av-bv)*pSort.dir;
+    return String(av).localeCompare(String(bv)) * pSort.dir;
+  });
+}
+
+// ══════════════════════════════════════════
+//  GOOGLE SHEETS API CONNECTOR
+// ══════════════════════════════════════════
+
+// ✅ PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+// It looks like: https://script.google.com/macros/s/AKfycb.../exec
+const API_URL = 'YOUR_WEB_APP_URL_HERE';
+
+async function apiGet(action) {
+  try {
+    const res  = await fetch(`${API_URL}?action=${action}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  } catch (err) {
+    console.error('API GET error:', err);
+    return null;
+  }
+}
+
+async function apiPost(action, payload) {
+  try {
+    const res  = await fetch(API_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ action, ...payload }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  } catch (err) {
+    console.error('API POST error:', err);
+    return null;
+  }
+}
+
+function showLoader(msg) {
+  let el = document.getElementById('api-loader');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'api-loader';
+    el.style.cssText = `
+      position:fixed;inset:0;background:rgba(5,10,15,0.9);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:9000;font-family:'Rajdhani',sans-serif;color:#00c8ff;
+      font-size:1.1rem;letter-spacing:0.2em;
+    `;
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <div style="margin-bottom:1rem;font-size:2.5rem;animation:pulse 1s infinite">⬡</div>
+    <div>${msg || 'LOADING...'}</div>
+    <div style="margin-top:0.5rem;font-size:0.75rem;color:#3a5a72;">FETCHING FROM GOOGLE SHEETS</div>
+  `;
+  el.style.display = 'flex';
+}
+
+function hideLoader() {
+  const el = document.getElementById('api-loader');
+  if (el) el.style.display = 'none';
+}
+
+async function initDashboard() {
+  // If no API URL set, fall back to dummy data
+  if (!API_URL || API_URL === 'YOUR_WEB_APP_URL_HERE') {
+    console.warn('No API_URL set — using dummy data');
+    renderGadgetStats();
+    renderBldgTabs();
+    renderGadgetGrid();
+    renderPersonnelStats();
+    filterPersonnel();
+    return;
+  }
+
+  showLoader('Loading gadget data...');
+
+  // ── Load Gadgets ──
+  const gadgetRes = await apiGet('getGadgets');
+  if (gadgetRes && gadgetRes.gadgets && gadgetRes.gadgets.length > 0) {
+    const buildings = {};
+    gadgetRes.gadgets.forEach(g => {
+      if (!buildings[g.Building]) buildings[g.Building] = [];
+      buildings[g.Building].push({
+        id:             g.ID,
+        building:       g.Building,
+        name:           g.Name,
+        status:         g.Status,
+        location:       g.Location,
+        serial:         g.Serial,
+        installDate:    g.InstallDate,
+        lastUpdate:     g.LastUpdate,
+        downSince:      g.DownSince || null,
+        correspondence: g.Correspondence || null,
+        assignedTech:   g.AssignedTech || null,
+        runtime:        g.Runtime || '—',
+      });
+    });
+    // Replace gadgetData with live sheet data
+    Object.keys(gadgetData).forEach(k => delete gadgetData[k]);
+    Object.keys(buildings).forEach((bldg, i) => {
+      gadgetData[i] = buildings[bldg];
+    });
+  }
+
+  showLoader('Loading personnel records...');
+
+  // ── Load Personnel ──
+  const personnelRes = await apiGet('getPersonnel');
+  if (personnelRes && personnelRes.personnel && personnelRes.personnel.length > 0) {
+    personnelData.length = 0;
+    personnelRes.personnel.forEach(p => {
+      personnelData.push({
+        id:             p.ID,
+        rank:           p.Rank,
+        name:           p.Name,
+        bmi:            parseFloat(p.BMI) || 0,
+        bmiCat:         p.BMI_Category,
+        checks:         p.checks || ['pass','pass','pass','pass','pass','pass'],
+        punish:         parseInt(p.Punishments) || 0,
+        lastPunish:     p.LastPunishDate || null,
+        lastPunishType: p.LastPunishType || null,
+        expertise:      p.expertise || [],
+        lastUpdate:     p.LastUpdate,
+      });
+    });
+  }
+
+  hideLoader();
+
+  // ── Render everything ──
+  renderGadgetStats();
+  renderBldgTabs();
+  renderGadgetGrid();
+  renderPersonnelStats();
+  filterPersonnel();
+}
+
+// ── Helper: update a gadget from UI ──
+async function saveGadgetUpdate(gadgetId, fields) {
+  const result = await apiPost('updateGadget', { data: { ID: gadgetId, ...fields } });
+  if (result && result.success) { alert('✓ Gadget updated'); initDashboard(); }
+  else alert('✗ Update failed. Check console.');
+}
+
+// ── Helper: update a personnel record from UI ──
+async function savePersonnelUpdate(personnelId, fields) {
+  const result = await apiPost('updatePersonnel', { data: { ID: personnelId, ...fields } });
+  if (result && result.success) { alert('✓ Personnel updated'); initDashboard(); }
+  else alert('✗ Update failed. Check console.');
+}
+
+// ══════════════════════════════════════════
+//  INIT — starts everything
+// ══════════════════════════════════════════
+initDashboard();
+</script>
+</body>
+</html>
